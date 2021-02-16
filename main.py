@@ -6,45 +6,65 @@ import os
 import getpass
 import urllib
 import sys
-import moviepy.editor as mpe
 
+def queryYN(question):
+    while(True):
+        inp = input(question+" ")
+        try:
+            if(inp.split()[0] == "Y" or inp.split()[0] == "y"):
+                return True
+            if(inp.split()[0] == "N" or inp.split()[0] == "n"):
+                return False
+        except IndexError:
+            return True
 
+def showStreamSelector(video, calcMaxRes=False):
+    print("Choose stream:")
+    streams = []
+    i = 0
+    max_res = 0
+    for stream in video.streams:
+        if(stream.mime_type == "video/mp4" and stream.is_progressive == False):
+            i += 1
+            print(str(i)+") Video;", "Resolution: "+stream.resolution, "Framerate: "+str(stream.fps))
+            streams.append(stream)
+            if(int(stream.resolution[:-1]) > max_res): max_res = int(stream.resolution[:-1])
+        if(stream.mime_type == "audio/mp4" and stream.is_progressive == False):
+            i += 1
+            streams.append(stream)
+            print(str(i)+") Audio;", "Bitrate: "+stream.abr)
+    #Requesting user's choise
+    stream_num = 0
+    while(True):
+        try:
+            stream_num = int(input("Enter number: "))-1
+            if(stream_num >= 0 and stream_num <= len(streams)-1):
+                break
+        except ValueError:
+            print("Not a number!")
+    if(calcMaxRes): return streams[stream_num], max_res
+    else: return streams[stream_num]
 
-
+#Initializing settings
 IDM_mode = True
 autocopy = False
 
-while(True):
-    inp = input("Start download with IDM? [Y/n] ")
-    if(inp.split()[0] == "Y" or inp.split()[0] == "y" or inp == ""):
-        from downloader import IDMan
-        downloader = IDMan()
-        break
-    if(inp.split()[0] == "N" or inp.split()[0] == "n"):
-        IDM_mode = False
-        break
+if(queryYN("Start download with IDM? [Y/n]")):
+    from downloader import IDMan
+    downloader = IDMan()
+else: IDM_mode = False
 
 if(not IDM_mode):
-    while(True):
-        inp = input("Autocopy links to clipboard? [Y/n] ")
-        if(inp.split()[0] == "Y" or inp.split()[0] == "y" or inp == ""):
-            import pyperclip
-            autocopy = True
-            break
-        if(inp.split()[0] == "N" or inp.split()[0] == "n"):
-            break
+    if(queryYN("Autocopy links to clipboard? [Y/n]")):
+        import pyperclip
+        autocopy = True
 
-
-
-
+#Welcome message and url request
 print("YouTube video downloader v1.2")
 url = input("Enter url to video or playlist: ")
 
 parsed = urllib.parse.urlparse(url)
 playlist = False
-
-
-
 
 if(parsed.path == "/playlist"):
     print("Got playlist, processing...")
@@ -52,15 +72,14 @@ if(parsed.path == "/playlist"):
 if(parsed.path == "/watch" or parsed.netloc == "youtu.be"):
     print("Got video, processing...")
 
-
-
-
 if(playlist):
+	#playlist info
     print()
     playlist = Playlist(url)
     print("Got", len(playlist), "videos")
     print("Parsing video params, it can take long time")
     all_videos = []
+    #Getting info about all videos and saving it to all_videos list
     try:
         for i, vid in enumerate(playlist.videos):
             print(str(i+1)+"/"+str(len(playlist)))
@@ -69,44 +88,27 @@ if(playlist):
         print("Sorry, blocked in your region. Try changing VPN server.")
         sys.exit(0)
 
-    print("Choose stream:")
-    streams = []
-    i = 0
-    max_res = 0
-    for i in all_videos[0].streams:
-        print(i)
-    i = 0
-    for stream in all_videos[0].streams:
-        if(stream.mime_type == "video/mp4"):
-            i += 1
-            print(str(i)+") Video;", "Resolution: "+stream.resolution, "Framerate: "+str(stream.fps))
-            streams.append(stream)
-            if(int(stream.resolution[:-1]) > max_res): max_res = int(stream.resolution[:-1])
-        if(stream.mime_type == "audio/mp4"):
-            i += 1
-            streams.append(stream)
-            print(str(i)+") Audio;", "Bitrate: "+stream.abr)
+    #print first video streams; progressive (audio&video in one file) isn't shown
+    print("Warning! Streams listed for first video; if other videos in playlist has better quality streams, we'll notify you.")
 
-    stream = 0
-    while(True):
-        try:
-            stream = int(input("Enter number: "))
-            if(stream >= 1 and stream <= len(streams)):
-                break
-        except ValueError:
-            print("Not a number!")
+    stream, max_res = showStreamSelector(all_videos[0], True)
 
+    #Checks all videos for selected stream; if max quality chosen, check if other videos in playlist has better quality.
     print("Stream type got; Checking all videos.")
-    if(max_res == streams[stream-1].resolution[:-1]): print("YES")
-    input("e")
-    for vid in all_videos:
-        max_res2 = 0
-        if(max_res == streams[stream-1].resolution[:-1]):
+    if(max_res == int(stream.resolution[:-1])):
+        for vid in all_videos:
+            max_res2 = 0
             for stream2 in vid.streams:
                 if(stream2.mime_type == "video/mp4"):
                     if(int(stream2.resolution[:-1]) > max_res2): max_res2 = int(stream2.resolution[:-1])
+            if(max_res2 > max_res):
+                reselect = queryYN("Video "+vid.title+" has stream with better quality, than first video in playlist. Do you want to select another stream for this video?[Y/n]")
+                if(reselect):
+                    stream3 = showStreamSelector(vid)
+                    print(stream3.resolution, stream3.fps)
 
-    extension = ".mp3"
+    input("waiting")
+    extension = ".mp3" 
 
     for vid in playlist.videos:
         print("Downloading", vid.title)
