@@ -19,7 +19,7 @@ def queryYN(question):
         except IndexError:
             return True
 
-def showStreamSelector(video, calcMaxRes=False, media_type=3):
+def showStreamSelector(video, media_type=3):
     video_stream = None
     audio_stream = None
     result_codec_type = None
@@ -34,12 +34,11 @@ def showStreamSelector(video, calcMaxRes=False, media_type=3):
     while(True): #this loop is for returning user on choose again, if audio and video codecs in PRO mode can't be stored in one file without re-encoding
         streams = []
         i = 0
-        max_res = 0
         for stream in video.streams:
             if(stream.type == "video" and stream.is_progressive == False):
                 video_codec = stream.parse_codecs()[0].split(".")[0]
                 show_stream = False
-                if(media_type == 1 and video_codec == "av01"): show_stream = True
+                if(media_type == 1 and (video_codec == "avc1" or video_codec == "av01")): show_stream = True
                 if(media_type == 2 and video_codec == "vp9"): show_stream = True
                 if(media_type == 3): show_stream = True
                 if(show_stream):
@@ -57,7 +56,6 @@ def showStreamSelector(video, calcMaxRes=False, media_type=3):
                     if(video_codec == "av01"): print("Codec: AV1  (.mp4)")
                     if(video_codec == "vp9"):  print("Codec: VP9  (.webm)")
                     streams.append(stream)
-                    if(int(stream.resolution[:-1]) > max_res): max_res = int(stream.resolution[:-1])
             if(stream.type == "audio" and stream.is_progressive == False):
                 audio_codec = stream.parse_codecs()[1].split(".")[0]
                 show_stream = False
@@ -107,14 +105,20 @@ def showStreamSelector(video, calcMaxRes=False, media_type=3):
             print("\n"*4)
             print("Chosen codecs can't be stored in one file without re-encoding. This program can't be used as re-encoder. Please, select other streams.")
 
-    print("video_codec", video_codec_type)
-    print("audio_codec", audio_codec_type)
     if(video_codec_type == 0 and audio_codec_type == 1): result_codec_type = -1
     if(video_codec_type == 0 and audio_codec_type == 2): result_codec_type = -2
     if(video_codec_type == 1): result_codec_type = 1
     if(video_codec_type == 2): result_codec_type = 2
-    if(calcMaxRes): return video_stream, audio_stream, result_codec_type, max_res
-    else: return video_stream, audio_stream, result_codec_type
+    return video_stream, audio_stream, result_codec_type
+
+def calcMaxRes(video, media_type=3):
+    max_res = 0
+    for stream in video.streams:
+        if(stream.type == "video"):
+            video_codec = stream.parse_codecs()[0].split(".")[0]
+            if(media_type == 3 or (media_type == 2 and video_codec == "vp9") or (media_type == 1 and (video_codec == "avc1" or video_codec == "av01"))):
+                if(int(stream.resolution[:-1]) > max_res): max_res = int(stream.resolution[:-1])
+    return max_res
 
 def selectAudioForVideo(vid, video_stream):
     video_codec = video_stream.parse_codecs()[0].split(".")[0]
@@ -216,14 +220,32 @@ if(playlist):
         print("Got 1 video")
     else:
         print("Got", len(playlist), "videos")
-    stream, audio_stream, codec_type = showStreamSelector(playlist, media_type=media_type)
+
+    videos = []
+    for i, vid in enumerate(playlist.videos):
+        videos.append(vid)
+        print(str(i+1)+"/"+str(len(playlist)))
+    print()
+    print("Video data parsed.")
+    print("Streams are showed for first video. If there are better quality in other videos, it will be shown on next step.")
+    stream, audio_stream, selected_codec_type = showStreamSelector(videos[0], media_type=media_type)
+    audio_mode = False
+    if(selected_codec_type < 0):
+        audio_mode = True
+    else:
+        selected_resolution = stream.resolution[:-1]
+        selected_fps = stream.fps
+    print("res", selected_resolution)
+    print("fps", selected_fps)
+    for vid in videos:
+        max_res = calcMaxRes(vid, media_type=media_type)
+        print(max_res)
 else:
     vid = YouTube(url)
     print(vid.title)
 
     stream, audio_stream, codec_type = showStreamSelector(vid, media_type=media_type)
     
-    print("codec:", codec_type)
     progressive_output = False
     if(codec_type == -1): #only audio in mp4a codec
         print("Downloading audio... ", end='', flush=True)
