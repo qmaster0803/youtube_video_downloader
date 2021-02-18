@@ -31,6 +31,7 @@ def showStreamSelector(video, media_type=3):
     #1 = video&audio in mp4 container
     #2 = video&audio in webm container
     print("Choose stream:")
+    if(media_type == 1 or media_type == 3): print("AVC1 provides best quality, than AV1. But AV1 files is smaller.")
     while(True): #this loop is for returning user on choose again, if audio and video codecs in PRO mode can't be stored in one file without re-encoding
         streams = []
         i = 0
@@ -237,9 +238,15 @@ if(playlist):
         selected_fps = stream.fps
     print("res", selected_resolution)
     print("fps", selected_fps)
+    max_res_selected = False
+    if(calcMaxRes(stream, media_type=media_type)): max_res_selected = True
+    streams_to_download = [[stream, audio_stream]]
     for vid in videos:
-        max_res = calcMaxRes(vid, media_type=media_type)
-        print(max_res)
+        if(max_res_selected):
+            max_res = calcMaxRes(vid, media_type=media_type)
+            if(max_res > selected_resolution):
+                pass
+        #findStream(vid, )
 else:
     vid = YouTube(url)
     print(vid.title)
