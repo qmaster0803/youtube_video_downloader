@@ -1,12 +1,14 @@
 import time
-from pytube import YouTube
-from pytube import Playlist
+from   pytube import YouTube
+from   pytube import Playlist
 import pytube.exceptions
 import os
 import getpass
 import urllib
 import sys
 import ffmpeg
+import unicodedata
+import re
 
 def queryYN(question):
     while(True):
@@ -153,10 +155,19 @@ def downloadFile(url, name, IDM_mode, autocopy):
             print(url)
             print("-"*20)
 
+def replaceSpecialChars(value, allow_unicode=False):
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize('NFKC', value)
+    else:
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value.lower())
+    return re.sub(r'[-\s]+', '-', value).strip('-_')
+
 def mergeStreams(input_video, input_audio, output_video):
     video_stream = ffmpeg.input(input_video).video
     audio_stream = ffmpeg.input(input_audio).audio
-    output = ffmpeg.output(video_stream, audio_stream, output_video, vcodec="copy", acodec="copy")
+    output = ffmpeg.output(video_stream, audio_stream, replaceSpecialChars(os.path.splitext(output_video)[0])+os.path.splitext(output_video)[1], vcodec="copy", acodec="copy")
     output.run(quiet=True)
     os.remove(input_video)
     os.remove(input_audio)
@@ -174,6 +185,23 @@ def doUserInputNumber(max_val, text="Enter number: ", allow_zero=False):
         except ValueError:
             pass
     return res
+
+def findStreams(video, res, fps, media_type):
+    output_video_stream = None
+    output_audio_stream = None
+    for stream in video.streams:
+        if(stream.type == "video" and stream.is_progressive == False):
+            video_codec = stream.parse_codecs()[0].split(".")[0]
+            show_stream = False
+            if(media_type == 1 and (video_codec == "avc1" or video_codec == "av01")): show_stream = True
+            if(media_type == 2 and video_codec == "vp9"): show_stream = True
+            if(media_type == 3): show_stream = True
+            if(show_stream and int(stream.resolution[:-1]) == res and stream.fps == fps): output_video_stream = stream
+    output_audio_stream = selectAudioForVideo(video, output_video_stream)
+    return output_video_stream, output_audio_stream
+
+
+
 
 #Welcome message and url request
 print("YouTube downloader v1.3")
@@ -225,7 +253,8 @@ if(playlist):
     videos = []
     for i, vid in enumerate(playlist.videos):
         videos.append(vid)
-        print(str(i+1)+"/"+str(len(playlist)))
+        if(i != 0): print(" "*50+"\r", end='')
+        print(str(i+1)+"/"+str(len(playlist)), end='')
     print()
     print("Video data parsed.")
     print("Streams are showed for first video. If there are better quality in other videos, it will be shown on next step.")
@@ -234,19 +263,21 @@ if(playlist):
     if(selected_codec_type < 0):
         audio_mode = True
     else:
-        selected_resolution = stream.resolution[:-1]
+        selected_resolution = int(stream.resolution[:-1])
         selected_fps = stream.fps
     print("res", selected_resolution)
     print("fps", selected_fps)
     max_res_selected = False
-    if(calcMaxRes(stream, media_type=media_type)): max_res_selected = True
+    if(calcMaxRes(videos[0], media_type=media_type)): max_res_selected = True
     streams_to_download = [[stream, audio_stream]]
-    for vid in videos:
-        if(max_res_selected):
+    if(max_res_selected):
+        for vid in videos:
             max_res = calcMaxRes(vid, media_type=media_type)
             if(max_res > selected_resolution):
-                pass
-        #findStream(vid, )
+                auto_larger = queryYN("You've selected max resolution stream, but one of videos has larger resolution. Do you want do donwload max resolution for all videos?")
+                break
+    #for vid in videos:
+    #    findStreams(vid, fps)
 else:
     vid = YouTube(url)
     print(vid.title)
@@ -289,5 +320,9 @@ else:
         else:
             downloadFile(video_url, "temp"+video_extension, IDM_mode, autocopy)
             input("Press enter to generate next link.")
-            downloadFile(audio_url, "temp"+audio_extension, IDM_mode, autocopy)            
+            downloadFile(audio_url, "temp"+audio_extension, IDM_mode, autocopy)  
+            doMerge = queryYN("Do you want to merge audio and video? [Y/n]")
+            if(doMerge):
+                input("Save audio as temp"+audio_extension+" and video as temp"+video_extension+" than press enter.")
+                mergeStreams("temp"+video_extension, "temp"+audio_extension, vid.title+video_extension)
     print("Done\n")
