@@ -12,12 +12,12 @@ def process(url, media_type, wget_mode, autocopy):
     if(codec_type == -1): #only audio in mp4a codec
         print("Downloading audio... ", end='', flush=True)
         url = audio_stream.url
-        downloadFile(url, vid.title+".mp3", wget_mode, autocopy)
+        download_utils.downloadFile(url, vid.title+".mp3", wget_mode, autocopy)
         if(wget_mode): print("done.")
     if(codec_type == -2): #only audio in opus codec
         print("Downloading audio... ", end='', flush=True)
         url = audio_stream.url
-        downloadFile(url, vid.title+".ogg", wget_mode, autocopy)
+        download_utils.downloadFile(url, vid.title+".ogg", wget_mode, autocopy)
         if(wget_mode): print("done.")
 
     if(codec_type == 1):
@@ -31,4 +31,4 @@ def process(url, media_type, wget_mode, autocopy):
     if(progressive_output):
         video_url = stream.url
         audio_url = audio_stream.url
-        download_utils.doOutput(video_url, video_extension, audio_url, audio_extension, wget_mode, autocopy)
+        download_utils.doOutput(video_url, video_extension, audio_url, audio_extension, output_title, wget_mode, autocopy)

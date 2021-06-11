@@ -74,7 +74,7 @@ def main():
     print()
 
     if(playlist):
-        process_playlist.process(url, media_type)
+        process_playlist.process(url, media_type, wget_mode, autocopy)
     else:
         process_video.process(url, media_type, wget_mode, autocopy)
     print("Done\n")

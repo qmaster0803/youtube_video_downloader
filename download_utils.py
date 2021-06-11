@@ -1,15 +1,25 @@
 import wget
 
 #automatically select audio stream for video stream
-def selectAudioForVideo(vid, video_stream):
-    video_codec = video_stream.parse_codecs()[0].split(".")[0]
-    audio_stream = None
-    if(video_codec == "avc1" or video_codec == "av01"): preferred_audio_codec = "mp4a"
-    if(video_codec == "vp9"): preferred_audio_codec = "opus"
-    print("Preff audio:", preferred_audio_codec)
-    for stream in vid.streams:
-        if(stream.type == "audio" and stream.parse_codecs()[1].split(".")[0] == preferred_audio_codec):
-            audio_stream = stream
+def selectAudioForVideo(vid, video_stream, audio_mode=False):
+    if(not audio_mode):
+        video_codec = video_stream.parse_codecs()[0].split(".")[0]
+        audio_stream = None
+        if(video_codec == "avc1" or video_codec == "av01"): preferred_audio_codec = "mp4a"
+        if(video_codec == "vp9"): preferred_audio_codec = "opus"
+        #print("Preff audio:", preferred_audio_codec)
+        for stream in vid.streams:
+            if(stream.type == "audio" and stream.parse_codecs()[1].split(".")[0] == preferred_audio_codec):
+                audio_stream = stream
+    else:
+        #using video_stream as media_type
+        audio_stream = None
+        if(video_stream == 1): preferred_audio_codec = "mp4a"
+        if(video_stream == 2): preferred_audio_codec = "opus"
+        #print("Preff audio:", preferred_audio_codec)
+        for stream in vid.streams:
+            if(stream.type == "audio" and stream.parse_codecs()[1].split(".")[0] == preferred_audio_codec):
+                audio_stream = stream
     return audio_stream
 
 #return max res for video (check all streams)
@@ -50,7 +60,7 @@ def downloadFile(url, name, wget_mode, autocopy):
             print(url)
             print("-"*20)
 
-def doOutput(video_url, video_extension, audio_url, audio_extension, wget_mode, autocopy):
+def doOutput(video_url, video_extension, audio_url, audio_extension, output_title, wget_mode, autocopy):
     if(wget_mode):
         print("Downloading video... ", end='', flush=True)
         downloadFile(video_url, "temp"+video_extension, wget_mode, autocopy)
@@ -59,7 +69,7 @@ def doOutput(video_url, video_extension, audio_url, audio_extension, wget_mode, 
         downloadFile(audio_url, "temp"+audio_extension, wget_mode, autocopy)
         print("done.")
         print("Merging streams... ", end='', flush=True)
-        mergeStreams("temp"+video_extension, "temp"+audio_extension, vid.title+video_extension)
+        mergeStreams("temp"+video_extension, "temp"+audio_extension, output_title+video_extension)
         print("done.")
     else:
         downloadFile(video_url, "temp"+video_extension, wget_mode, autocopy)
@@ -68,4 +78,4 @@ def doOutput(video_url, video_extension, audio_url, audio_extension, wget_mode, 
         doMerge = ui_utils.queryYN("Do you want to merge audio and video? [Y/n]")
         if(doMerge):
             input("Save audio as temp"+audio_extension+" and video as temp"+video_extension+" than press enter.")
-            mergeStreams("temp"+video_extension, "temp"+audio_extension, vid.title+video_extension)
+            mergeStreams("temp"+video_extension, "temp"+audio_extension, output_title+video_extension)
