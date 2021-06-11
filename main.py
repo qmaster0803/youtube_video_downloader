@@ -39,16 +39,15 @@ def main():
     url = input("Enter url to video or playlist: ")
 
     #Initializing settings
-    IDM_mode = True
+    wget_mode = True
     autocopy = False
     media_type = 0
 
-    if(ui_utils.queryYN("Start download with IDM? [Y/n]")):
-        from downloader import IDMan
-        downloader = IDMan()
-    else: IDM_mode = False
+    if(ui_utils.queryYN("Start download with wget? [Y/n]")):
+        wget_mode = True
+    else: wget_mode = False
 
-    if(not IDM_mode):
+    if(not wget_mode):
         if(ui_utils.queryYN("Autocopy links to clipboard? [Y/n]")):
             import pyperclip
             autocopy = True
@@ -77,7 +76,7 @@ def main():
     if(playlist):
         process_playlist.process(url, media_type)
     else:
-        process_video.process(url, media_type, IDM_mode, autocopy)
+        process_video.process(url, media_type, wget_mode, autocopy)
     print("Done\n")
 
 if(__name__ == "__main__"):

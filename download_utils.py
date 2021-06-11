@@ -1,3 +1,5 @@
+import wget
+
 #automatically select audio stream for video stream
 def selectAudioForVideo(vid, video_stream):
     video_codec = video_stream.parse_codecs()[0].split(".")[0]
@@ -35,17 +37,9 @@ def findStreams(video, res, fps, media_type):
     output_audio_stream = selectAudioForVideo(video, output_video_stream)
     return output_video_stream, output_audio_stream
 
-def downloadFile(url, name, IDM_mode, autocopy):
-    if(IDM_mode):
-        downloader.download(url, os.getcwd(), output=name, lflag=5)
-        idm_folder_name = urllib.parse.urlparse(url).netloc.split(".")[0]
-        found = True
-        while(found):
-            found = False
-            dirlist = os.listdir(os.path.join(os.getenv('APPDATA'), "IDM\\DwnlData\\", getpass.getuser()))
-            for i in dirlist:
-                if(i[:len(idm_folder_name)] == idm_folder_name):
-                    found = True
+def downloadFile(url, name, wget_mode, autocopy):
+    if(wget_mode):
+        wget.download(url, out=name)
     else:
         if(autocopy):
             print("Link generated and copied to clipboard. Please save it with", os.path.splitext(name)[1], "extension.")
@@ -56,21 +50,21 @@ def downloadFile(url, name, IDM_mode, autocopy):
             print(url)
             print("-"*20)
 
-def doOutput(video_url, video_extension, audio_url, audio_extension, IDM_mode, autocopy):
-    if(IDM_mode):
+def doOutput(video_url, video_extension, audio_url, audio_extension, wget_mode, autocopy):
+    if(wget_mode):
         print("Downloading video... ", end='', flush=True)
-        downloadFile(video_url, "temp"+video_extension, IDM_mode, autocopy)
+        downloadFile(video_url, "temp"+video_extension, wget_mode, autocopy)
         print("done.", flush=True)
         print("Downloading audio... ", end='', flush=True)
-        downloadFile(audio_url, "temp"+audio_extension, IDM_mode, autocopy)
+        downloadFile(audio_url, "temp"+audio_extension, wget_mode, autocopy)
         print("done.")
         print("Merging streams... ", end='', flush=True)
         mergeStreams("temp"+video_extension, "temp"+audio_extension, vid.title+video_extension)
         print("done.")
     else:
-        downloadFile(video_url, "temp"+video_extension, IDM_mode, autocopy)
+        downloadFile(video_url, "temp"+video_extension, wget_mode, autocopy)
         input("Press enter to generate next link.")
-        downloadFile(audio_url, "temp"+audio_extension, IDM_mode, autocopy)  
+        downloadFile(audio_url, "temp"+audio_extension, wget_mode, autocopy)  
         doMerge = ui_utils.queryYN("Do you want to merge audio and video? [Y/n]")
         if(doMerge):
             input("Save audio as temp"+audio_extension+" and video as temp"+video_extension+" than press enter.")
